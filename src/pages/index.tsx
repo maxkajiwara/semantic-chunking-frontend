@@ -46,12 +46,20 @@ function Home({ documents, naives, ours }: Props) {
 	const [naiveChunks, setNaiveChunks] = useState<Chunk[] | null>([])
 	const [ourChunks, setOurChunks] = useState<Chunk[] | null>([])
 
-	const documentList: DocumentOption[] = documents.map(({ filename }, index) => {
-		return {
-			id: index,
-			name: filename.substring(0, filename.lastIndexOf('.')),
-		}
-	})
+	const documentList: DocumentOption[] = documents
+		.filter((document) =>
+			ours.find(
+				({ filename }) =>
+					filename.substring(0, filename.lastIndexOf('.')) ===
+					document.filename.substring(0, filename.lastIndexOf('.'))
+			)
+		)
+		.map(({ filename }, index) => {
+			return {
+				id: index,
+				name: filename.substring(0, filename.lastIndexOf('.')),
+			}
+		})
 
 	console.log(`🔴 Props`, { documents, naives })
 
