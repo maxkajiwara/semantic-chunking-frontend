@@ -122,7 +122,7 @@ function Home({ documents }: Props) {
 						</div>
 						<div className='flex flex-col gap-2'>
 							<h1 className='text-3xl font-extrabold tracking-tight'>Preview</h1>
-							<p className=''>
+							<p className='max-h-96 overflow-auto'>
 								{/* HACK: ADDING FILE EXTENSION HERE */}
 								{!!selectedDocument &&
 									documents.find((document) => document.filename === selectedDocument.name + '.txt')
