@@ -1,8 +1,8 @@
 import Head from 'next/head'
 
-import { api } from '~/utils/api'
+// import { api } from '~/utils/api'
 import { useState } from 'react'
-import { CheckIcon, ChevronUpDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid'
+import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid'
 import { Combobox } from '@headlessui/react'
 
 import { promises as fs } from 'fs'
@@ -22,15 +22,29 @@ type DocumentOption = {
 	name: string
 }
 
-interface Props {
-	documents: Document[]
+type ChunkedDocument = {
+	filename: string
+	chunks: Chunk[]
 }
 
-function Home({ documents }: Props) {
+type Chunk = {
+	chunk: string
+	original_text: string
+}
+
+interface Props {
+	documents: Document[]
+	naives: ChunkedDocument[]
+	ours: ChunkedDocument[]
+}
+
+function Home({ documents, naives, ours }: Props) {
 	// const hello = api.post.hello.useQuery({ text: 'from tRPC' })
 
 	const [query, setQuery] = useState('')
 	const [selectedDocument, setSelectedDocument] = useState<DocumentOption | null>(null)
+	const [naiveChunks, setNaiveChunks] = useState<Chunk[] | null>([])
+	const [ourChunks, setOurChunks] = useState<Chunk[] | null>([])
 
 	const documentList: DocumentOption[] = documents.map(({ filename }, index) => {
 		return {
@@ -39,7 +53,7 @@ function Home({ documents }: Props) {
 		}
 	})
 
-	console.log(`documentList:`, { documents, documentList })
+	console.log(`🔴 Props`, { documents, naives })
 
 	const filteredDocuments =
 		query === ''
@@ -47,6 +61,28 @@ function Home({ documents }: Props) {
 			: documentList.filter((document) => {
 					return document.name.toLowerCase().includes(query.toLowerCase())
 			  })
+
+	const getDocumentContent = (documentName: string) => {
+		// ! HACK: ALL FILES ARE TXT
+		const documentNameWithExtension = documentName + '.txt'
+
+		return documents.find((document) => document.filename === documentNameWithExtension)?.content
+	}
+
+	const handleClick = (documentName: string | undefined) => {
+		if (!documentName) return
+
+		const documentNameWithExtension = documentName + '.json'
+
+		const naiveChunks = naives.find((naive) => naive.filename === documentNameWithExtension)?.chunks
+
+		const ourChunks = ours.find((our) => our.filename === documentNameWithExtension)?.chunks
+
+		console.log(`🟣 Generating Chunks:`, { naiveChunks, ourChunks })
+
+		setNaiveChunks(naiveChunks ?? null)
+		setOurChunks(ourChunks ?? null)
+	}
 
 	return (
 		<>
@@ -58,7 +94,7 @@ function Home({ documents }: Props) {
 			<main className='flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#02376d] to-[#151a2c]'>
 				<div className='container flex flex-col items-center gap-16 rounded-lg bg-white px-16 py-16'>
 					<div className='grid w-full grid-cols-2 gap-16'>
-						<div className='flex flex-col gap-8'>
+						<div className='flex flex-col gap-2'>
 							<h1 className='text-3xl font-extrabold tracking-tight'>Documents</h1>
 							<Combobox as='div' value={selectedDocument} onChange={setSelectedDocument}>
 								<div className='relative mt-2 max-w-sm'>
@@ -115,18 +151,17 @@ function Home({ documents }: Props) {
 							</Combobox>
 							<button
 								type='button'
-								className='mt-auto max-w-xs rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+								className='mb-6 ml-6 mt-auto max-w-xs rounded-md bg-indigo-600 px-3.5 py-2.5 text-lg font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+								onClick={() => handleClick(selectedDocument?.name)}
 							>
 								Generate Chunks
 							</button>
 						</div>
-						<div className='flex flex-col gap-2'>
+						<div className='flex flex-col gap-4'>
 							<h1 className='text-3xl font-extrabold tracking-tight'>Preview</h1>
-							<p className='max-h-96 overflow-auto'>
-								{/* HACK: ADDING FILE EXTENSION HERE */}
-								{!!selectedDocument &&
-									documents.find((document) => document.filename === selectedDocument.name + '.txt')
-										?.content}
+							<p className='h-96 overflow-y-scroll border border-gray-300 bg-gray-100 p-4'>
+								{/* HACK: RE-ADDING FILE EXTENSION HERE */}
+								{!!selectedDocument && getDocumentContent(selectedDocument.name)}
 							</p>
 						</div>
 					</div>
@@ -134,16 +169,21 @@ function Home({ documents }: Props) {
 					<div className='grid w-full grid-cols-2 gap-16'>
 						<div className='flex flex-col gap-8'>
 							<h1 className='text-3xl font-extrabold tracking-tight'>Naive Algo</h1>
-							<div className='flex w-full gap-4'>
-								<p className='border border-gray-300 p-4'>
-									Sic de isto et tutius perducit ad actum ipsum, ut si dico "Ego autem vadam lavari,
-									ut mens mea in statu naturae
-								</p>
-								<p className='w-80 p-4'>{`Chunk score = ${0.6}`}</p>
-							</div>
+							{naiveChunks?.map(({ original_text }) => (
+								<div className='flex w-full gap-4'>
+									<p className='border border-gray-300 bg-gray-50 p-4'>{original_text}</p>
+									{/* <p className='w-80 p-4'>{`Chunk score = ${0.6}`}</p> */}
+								</div>
+							))}
 						</div>
 						<div className='flex flex-col gap-2'>
 							<h1 className='text-3xl font-extrabold tracking-tight'>Our Algo</h1>
+							{ourChunks?.map(({ original_text }) => (
+								<div className='flex w-full gap-4'>
+									<p className='border border-gray-300 bg-gray-50 p-4'>{original_text}</p>
+									{/* <p className='w-80 p-4'>{`Chunk score = ${0.6}`}</p> */}
+								</div>
+							))}
 						</div>
 					</div>
 				</div>
@@ -155,25 +195,55 @@ function Home({ documents }: Props) {
 // https://nextjs.org/docs/pages/api-reference/functions/get-static-props#reading-files-use-processcwd
 export async function getStaticProps() {
 	const documentsDirectory = path.join(process.cwd(), 'src/data/raw_text')
-	const filenames = await fs.readdir(documentsDirectory)
+	const documentFilenames = await fs.readdir(documentsDirectory)
 
-	const documents = filenames.map(async (filename) => {
+	const documents = documentFilenames.map(async (filename) => {
 		const filePath = path.join(documentsDirectory, filename)
 		const fileContents = await fs.readFile(filePath, 'utf8')
-
-		// Generally you would parse/transform the contents
-		// For example you can transform markdown to HTML here
 
 		return {
 			filename,
 			content: fileContents,
 		}
 	})
-	// By returning { props: { documents } }, the component
-	// will receive `documents` as a prop at build time
+
+	const naiveDirectory = path.join(process.cwd(), 'src/data/naive')
+	const naiveFilenames = await fs.readdir(naiveDirectory)
+
+	const naive = naiveFilenames.map(async (filename) => {
+		const filePath = path.join(naiveDirectory, filename)
+		const fileContents = await fs.readFile(filePath, 'utf8')
+
+		const { chunks }: { chunks: { chunk: string; original_text: string }[] } =
+			JSON.parse(fileContents)
+
+		return {
+			filename,
+			chunks,
+		}
+	})
+
+	const ourDirectory = path.join(process.cwd(), 'src/data/ours')
+	const ourFilenames = await fs.readdir(ourDirectory)
+
+	const ours = ourFilenames.map(async (filename) => {
+		const filePath = path.join(ourDirectory, filename)
+		const fileContents = await fs.readFile(filePath, 'utf8')
+
+		const { chunks }: { chunks: { chunk: string; original_text: string }[] } =
+			JSON.parse(fileContents)
+
+		return {
+			filename,
+			chunks,
+		}
+	})
+
 	return {
 		props: {
 			documents: await Promise.all(documents),
+			naives: await Promise.all(naive),
+			ours: await Promise.all(ours),
 		},
 	}
 }
