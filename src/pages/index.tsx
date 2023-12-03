@@ -187,7 +187,7 @@ function Home({ documents, naives, ours }: Props) {
 						<div className='flex flex-col gap-2'>
 							<h1 className='text-3xl font-extrabold tracking-tight'>Our Algo</h1>
 							{ourChunks?.map(({ original_text }) => (
-								<div className='flex w-full gap-4'>
+								<div className='flex w-full gap-8'>
 									<p className='border border-gray-300 bg-gray-50 p-4'>{original_text}</p>
 									{/* <p className='w-80 p-4'>{`Chunk score = ${0.6}`}</p> */}
 								</div>
